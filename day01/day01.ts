@@ -2,47 +2,65 @@ import input from './input';
 
 const isDigit = /^\d$/;
 
-function findCalibrationValues(line: string): [number, number] {
+// index, value of the digit
+type CalibrationValue = [number, number];
+
+// first, last digit
+type CalibrationValues = [CalibrationValue, CalibrationValue];
+
+function findCalibrationValues(line: string): CalibrationValues {
   let first: number | null = null;
   let last: number | null = null;
   let i = 0;
   let j = line.length - 1;
 
   while (i <= j) {
-    if (first === null && isDigit.test(line[i])) {
+    if (!first && isDigit.test(line[i])) {
       first = Number(line[i]);
     }
 
-    if (last === null && isDigit.test(line[j])) {
+    if (!last && isDigit.test(line[j])) {
       last = Number(line[j]);
     }
 
-    if (first !== null && last !== null) {
-      return [first, last];
+    if (first && last) {
+      return [
+        [i, first],
+        [j, last],
+      ];
     }
 
-    if (first === null) {
+    if (!first) {
       i++;
     }
 
-    if (last === null) {
+    if (!last) {
       j--;
     }
   }
 
-  if (first !== null) {
-    return [first, first];
+  if (first) {
+    return [
+      [i, first],
+      [i, first],
+    ];
   }
 
-  if (last !== null) {
-    return [last, last];
+  if (last) {
+    return [
+      [j, last],
+      [j, last],
+    ];
   }
 
   throw new Error(`No calibration values found: ${line}`);
 }
 
-function sumCalibrationValues(values: [number, number][]): number {
-  return values.reduce((acc, [first, last]) => acc + (first * 10 + last), 0);
+function sumCalibrationValues(values: CalibrationValues[]): number {
+  return values.reduce(
+    (acc, [[, first], [, last]]) => acc + (first * 10 + last),
+    0
+  );
 }
 
 // part 1
@@ -54,40 +72,35 @@ console.log(sum);
 
 // part 2
 
-const WORD_DIGITS = [
-  'one',
-  'two',
-  'three',
-  'four',
-  'five',
-  'six',
-  'seven',
-  'eight',
-  'nine',
-] as const;
+const wordToDigit: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+};
 
-const wordToDigit = WORD_DIGITS.reduce((acc, word, index) => {
-  acc[word] = index + 1;
-  return acc;
-}, {} as Record<string, number>);
-
-function findCalibrationValuesWithWords(
-  line: string
-): [[number, number], [number, number]] {
+function findWordsCalibrationValues(line: string): CalibrationValues {
   let first = Infinity;
   let firstWord = '';
 
   let last = -1;
   let lastWord = '';
 
-  for (const wordDigit of WORD_DIGITS) {
+  for (const wordDigit of Object.keys(wordToDigit)) {
     const index = line.indexOf(wordDigit);
 
     if (index > -1 && index < first) {
       first = index;
       firstWord = wordDigit;
     }
+
     const lastIndex = line.lastIndexOf(wordDigit);
+
     if (lastIndex > -1 && lastIndex > last) {
       last = lastIndex;
       lastWord = wordDigit;
@@ -100,82 +113,31 @@ function findCalibrationValuesWithWords(
   ];
 }
 
-function findCalibrationValuesWithIndex(
-  line: string
-): [[number, number], [number, number]] | null {
-  let first: number | null = null;
-  let last: number | null = null;
-  let i = 0;
-  let j = line.length - 1;
+function findCalibrationValuesWithWords(line: string): CalibrationValues {
+  const wordsCalibrationValues = findWordsCalibrationValues(line);
+  const digitsCalibrationValues = findCalibrationValues(line);
 
-  while (i <= j) {
-    if (first === null && isDigit.test(line[i])) {
-      first = Number(line[i]);
-    }
-
-    if (last === null && isDigit.test(line[j])) {
-      last = Number(line[j]);
-    }
-
-    if (first !== null && last !== null) {
-      return [
-        [i, first],
-        [j, last],
-      ];
-    }
-
-    if (first === null) {
-      i++;
-    }
-
-    if (last === null) {
-      j--;
-    }
+  if (!digitsCalibrationValues) {
+    return wordsCalibrationValues;
   }
 
-  if (first !== null) {
-    return [
-      [i, first],
-      [i, first],
-    ];
-  }
+  const [firstWord, lastWord] = wordsCalibrationValues;
+  const [firstDigit, lastDigit] = digitsCalibrationValues;
 
-  if (last !== null) {
-    return [
-      [j, last],
-      [j, last],
-    ];
-  }
-
-  return null;
-}
-
-function findCalibrationValues2(line: string): [number, number] {
-  const words = findCalibrationValuesWithWords(line);
-  const [firstWord, lastWord] = words;
-
-  const digits = findCalibrationValuesWithIndex(line);
-
-  if (digits === null) {
-    return [firstWord[1], lastWord[1]];
-  }
-
-  const [firstDigit, lastDigit] = digits;
-
-  let first = firstDigit[1];
-  let last = lastDigit[1];
+  let first = firstDigit;
+  let last = lastDigit;
 
   if (firstWord[0] < firstDigit[0]) {
-    first = firstWord[1];
+    first = firstWord;
   }
 
   if (lastWord[0] > lastDigit[0]) {
-    last = lastWord[1];
+    last = lastWord;
   }
 
   return [first, last];
 }
 
-const calibrationValues2 = parsedInput.map(findCalibrationValues2);
+const calibrationValues2 = parsedInput.map(findCalibrationValuesWithWords);
 const sum2 = sumCalibrationValues(calibrationValues2);
 console.log(sum2);
