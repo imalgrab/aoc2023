@@ -1,62 +1,51 @@
 import input from './input';
 
-function parseInput(
-  input: string,
-  ignoreWhitespace?: boolean
-): [number, number][] {
+function parseInput(input: string, readAsOne?: boolean): [number, number][] {
   const [timesData, distancesData] = input.split('\n');
-
-  const times = timesData
-    .split(':')[1]
-    .split(' ')
-    .filter(x => x !== '')
-    .map(x => parseInt(x));
-
+  const times = timesData.split(':')[1].split(' ').filter(Boolean).map(Number);
   const distances = distancesData
     .split(':')[1]
     .split(' ')
-    .filter(x => x !== '')
-    .map(x => parseInt(x));
+    .filter(Boolean)
+    .map(Number);
 
-  if (ignoreWhitespace) {
-    const time = Number(times.join(''));
-    const distance = Number(distances.join(''));
-    return [[time, distance]];
+  if (readAsOne) {
+    return [[Number(times.join('')), Number(distances.join(''))]];
   }
 
   return times.map((time, i) => [time, distances[i]]);
 }
 
-function findWonRaces(time: number, distance: number): number {
-  let wins = 0;
-  for (let i = 0; i < time; i++) {
-    if (i * (time - i) > distance) {
-      wins++;
-    }
-  }
-  return wins;
+function findWaysToWin(time: number, distance: number): number {
+  // (time - i) * i > distance
+  // -i^2 + t*i -d > 0
+  const delta = time ** 2 - 4 * distance;
+  const x0 = (-time - Math.sqrt(delta)) / -2;
+  const x1 = (-time + Math.sqrt(delta)) / -2;
+
+  const start = Math.floor(Math.min(x0, x1));
+  const end = Math.ceil(Math.max(x0, x1));
+
+  return end - start - 1;
 }
 
-function determineNumberOfWays(raceData: [number, number][]): number {
+function findNumberOfWaysToWin(racesData: [number, number][]): number {
   let ways = 1;
-  for (const [time, distance] of raceData) {
-    const wins = findWonRaces(time, distance);
-    ways *= wins;
+  for (const [time, distance] of racesData) {
+    const waysToWin = findWaysToWin(time, distance);
+    ways *= waysToWin;
   }
-
   return ways;
 }
 
 // part1
 
-const parsedInput = parseInput(input);
-const numberOfWays = determineNumberOfWays(parsedInput);
-
-console.log(numberOfWays);
+const racesData = parseInput(input);
+const result = findNumberOfWaysToWin(racesData);
+console.log(result);
 
 // part2
 
-const parsedInput2 = parseInput(input, true);
-const numberOfWays2 = determineNumberOfWays(parsedInput2);
-
-console.log(numberOfWays2);
+const raceData = parseInput(input, true);
+const result2 = findNumberOfWaysToWin(racesData);
+console.log(result2);
