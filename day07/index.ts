@@ -23,53 +23,6 @@ function getHandsWithBids(input: string): [string, number][] {
   return handsWithBids;
 }
 
-// function getHandValue(hand: string): number {
-//   const occurences = new Map<string, number>();
-//   for (const card of hand) {
-//     const occurence = occurences.get(card) ?? 0;
-//     occurences.set(card, occurence + 1);
-//   }
-
-//   let hasPair = false;
-//   let hasTriplet = false;
-
-//   for (const num of occurences.values()) {
-//     if (num === 5) {
-//       return VALUES.fiveOfAKind;
-//     }
-
-//     if (num === 4) {
-//       return VALUES.fourOfAKind;
-//     }
-
-//     if ((num === 3 && hasPair) || (num === 2 && hasTriplet)) {
-//       return VALUES.fullHouse;
-//     }
-
-//     if (num === 2 && hasPair) {
-//       return VALUES.twoPair;
-//     }
-
-//     if (num === 3) {
-//       hasTriplet = true;
-//     }
-
-//     if (num === 2) {
-//       hasPair = true;
-//     }
-//   }
-
-//   if (hasTriplet) {
-//     return VALUES.threeOfAKind;
-//   }
-
-//   if (hasPair) {
-//     return VALUES.pair;
-//   }
-
-//   return VALUES.highCard;
-// }
-
 export function getHandValue(
   hand: string,
   withJokers: boolean = false
@@ -84,8 +37,6 @@ export function getHandValue(
       occurences.set(card, occurence + 1);
     }
   }
-
-  // 250825971 ???
 
   if (numOfJokers >= 4) {
     return VALUES.fiveOfAKind;
@@ -186,8 +137,8 @@ function calculateWinnings(
 
 // part 1
 const handsWithBids = getHandsWithBids(input);
-// const winnings = calculateWinnings(handsWithBids);
-// console.log(winnings);
+const winnings = calculateWinnings(handsWithBids);
+console.log(winnings);
 
 // part 2
 
