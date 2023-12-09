@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest",
+    "test-all": "vitest",
+    "test": "vitest related $(./get-dir-name.sh)/index.test.ts",
     "start": "ts-node $(./get-dir-name.sh)",
     "get-dir-name": "./get-dir-name.sh",
     "create-today": "./create-today.sh"
