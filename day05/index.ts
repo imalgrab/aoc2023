@@ -70,9 +70,9 @@ function findMinimumLocation(seeds: number[], mappings: Mapping[][]): number {
 
 // part 1
 
-const { seeds, mappings } = getData(input);
-const minimumLocation = findMinimumLocation(seeds, mappings);
-console.log(minimumLocation);
+// const { seeds, mappings } = getData(input);
+// const minimumLocation = findMinimumLocation(seeds, mappings);
+// console.log(minimumLocation);
 
 function getRangedData(input: string): RangedData {
   const seedRanges: Range[] = [];
@@ -162,14 +162,11 @@ function findRangeMinLocationValue(
   seedRange: Range,
   mappings: Mapping[][]
 ): number {
-  let currentRanges: Range[] = [];
-  let nextRanges = [seedRange];
+  let currentRanges: Range[] = [{ ...seedRange }];
+  let nextRanges: Range[] = [];
 
-  for (let i = 0; i < mappings.length; i++) {
+  for (let i = 0; i < 7; i++) {
     const currentMappings = mappings[i];
-
-    currentRanges = [...nextRanges];
-    nextRanges = [];
 
     for (let j = 0; j < currentRanges.length; j++) {
       const currentRange = currentRanges[j];
@@ -183,9 +180,11 @@ function findRangeMinLocationValue(
       if (!mappedRanges.length) {
         mappedRanges.push(currentRange);
       }
-
       nextRanges.push(...mappedRanges);
     }
+
+    currentRanges = [...nextRanges];
+    nextRanges = [];
   }
 
   const currentSources = currentRanges.map(range => range.source);
