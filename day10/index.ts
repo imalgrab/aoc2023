@@ -1,15 +1,5 @@
 import input from './input';
 
-const PIPES = {
-  '|': 'NS',
-  '-': 'EW',
-  L: 'NE',
-  J: 'NW',
-  '7': 'SW',
-  F: 'SE',
-} as const;
-
-const GROUND = '.' as const;
 const START = 'S' as const;
 
 type Position = [number, number];
@@ -24,12 +14,18 @@ function parseInput(input: string): Data {
   const map = lines.map(line => line.split(''));
   let startingPosition: Position = [-1, -1];
 
+  let startFound = false;
   for (let i = 0; i < map.length; i++) {
     for (let j = 0; j < map[i].length; j++) {
       if (map[i][j] === START) {
         startingPosition = [i, j];
+        startFound = true;
         break;
       }
+    }
+
+    if (startFound) {
+      break;
     }
   }
 
@@ -54,149 +50,90 @@ function getAdjacentPositions(
       const adjacentPosition: Position = [x + dx[i], y + dy[i]];
       adjacentPositions.push(adjacentPosition);
     }
-    1;
   }
 
   return adjacentPositions;
 }
 
-function checkAdjacentPipeCorrect(
-  startPosition: Position,
-  adjacentPipePosition: Position,
+function checkAdjacentPipe(
+  current: Position,
+  adjacent: Position,
   map: string[][]
 ): boolean {
-  const [startX, startY] = startPosition;
-  const currentPipe = map[startX][startY];
+  const [x, y] = current;
+  const pipe = map[x][y];
 
-  const [x, y] = adjacentPipePosition;
-  const pipe = PIPES[map[x][y] as keyof typeof PIPES];
+  const [adjX, adjY] = adjacent;
+  const adjPipe = map[adjX][adjY];
 
-  switch (pipe) {
-    case 'NS':
-      return (
-        (startX === x - 1 &&
-          startY === y &&
-          ['S', '|', 'F', '7'].includes(currentPipe)) ||
-        (startX === x + 1 &&
-          startY === y &&
-          ['S', '|', 'J', 'L'].includes(currentPipe))
-      );
-    case 'EW':
-      return (
-        (startY === y - 1 &&
-          startX === x &&
-          ['S', '-', 'F', 'L'].includes(currentPipe)) ||
-        (startY === y + 1 &&
-          startX === x &&
-          ['S', '-', 'J', '7'].includes(currentPipe))
-      );
-    case 'NE':
-      return (
-        (startX === x - 1 &&
-          startY === y &&
-          ['S', '7', '|', 'F'].includes(currentPipe)) ||
-        (startY === y + 1 &&
-          startX === x &&
-          ['S', '7', '-', 'J'].includes(currentPipe))
-      );
-    case 'NW':
-      return (
-        (startX === x - 1 &&
-          startY === y &&
-          ['S', 'F', '|', '7'].includes(currentPipe)) ||
-        (startY === y - 1 &&
-          startX === x &&
-          ['S', 'F', '-', 'L'].includes(currentPipe))
-      );
-    case 'SW':
-      return (
-        (startX === x &&
-          startY === y - 1 &&
-          ['S', 'L', '-', 'F'].includes(currentPipe)) ||
-        (startX === x + 1 &&
-          startY === y &&
-          ['S', 'L', '|', 'J'].includes(currentPipe))
-      );
-    case 'SE':
-      return (
-        (startX === x + 1 &&
-          startY === y &&
-          ['S', 'J', '|', 'L'].includes(currentPipe)) ||
-        (startX === x &&
-          startY === y + 1 &&
-          ['S', 'J', '-', '7'].includes(currentPipe))
-      );
+  if (adjX === x - 1) {
+    return (
+      ['|', '7', 'F'].includes(adjPipe) && ['S', '|', 'J', 'L'].includes(pipe)
+    );
   }
+
+  if (adjX === x + 1) {
+    return (
+      ['|', 'J', 'L'].includes(adjPipe) && ['S', '|', '7', 'F'].includes(pipe)
+    );
+  }
+
+  if (adjY === y - 1) {
+    return (
+      ['-', 'L', 'F'].includes(adjPipe) && ['S', '-', 'J', '7'].includes(pipe)
+    );
+  }
+
+  if (adjY === y + 1) {
+    return (
+      ['-', '7', 'J'].includes(adjPipe) && ['S', '-', 'L', 'F'].includes(pipe)
+    );
+  }
+
+  return false;
 }
 
-function getNextPosition(
+function getNextPositions(
   currentPosition: Position,
   map: string[][]
 ): Position[] {
   const n = map.length;
   const m = map[0].length;
   const adjacentPositions = getAdjacentPositions(currentPosition, n, m);
-  const adjacentPipesPositions = adjacentPositions.filter(
-    ([x, y]) => map[x][y] !== GROUND
-  );
-  const correctPipesPositions = adjacentPipesPositions.filter(position =>
-    checkAdjacentPipeCorrect(currentPosition, position, map)
+  const pipesPositions = adjacentPositions.filter(position =>
+    checkAdjacentPipe(currentPosition, position, map)
   );
 
-  return correctPipesPositions;
+  return pipesPositions;
 }
 
 function calculateLongestDistance(startPosition: Position, map: string[][]) {
   const [a, b] = startPosition;
-  const adjacent = getAdjacentPositions(
-    startPosition,
-    map.length,
-    map[0].length
-  );
-  const pipes = adjacent.filter(([x, y]) => map[x][y] !== GROUND);
-  const correctPipes = pipes.filter(position =>
-    checkAdjacentPipeCorrect(startPosition, position, map)
-  );
-
-  if (correctPipes.length !== 2) {
-    throw new Error('There should be only 2 pipes from S');
-  }
-
   let distance = 1;
-  let [first, second] = correctPipes;
 
-  let [x1, y1] = first;
-  let [x2, y2] = second;
+  const startAdjacent = getNextPositions(startPosition, map);
 
-  const visited = new Set<string>([`${a},${b}`, `${x1},${y1}`, `${x2},${y2}`]);
+  let [x, y] = startAdjacent[0];
+  let [endX, endY] = startAdjacent[1];
 
-  while (x1 !== x2 || y1 !== y2) {
-    const next1 = getNextPosition([x1, y1], map).filter(
-      ([a, b]) => !visited.has(`${a},${b}`)
-    );
+  const visited = new Set<string>([`${a},${b}`, `${x},${y}`]);
 
-    const next2 = getNextPosition([x2, y2], map).filter(
-      ([a, b]) => !visited.has(`${a},${b}`)
-    );
+  while (x !== endX || y !== endY) {
+    const nextPositions = getNextPositions([x, y], map);
+
+    for (const [nextX, nextY] of nextPositions) {
+      if (!visited.has(`${nextX},${nextY}`)) {
+        visited.add(`${nextX},${nextY}`);
+        x = nextX;
+        y = nextY;
+        break;
+      }
+    }
 
     distance++;
-
-    if (next1.length === 0 && next2.length === 0) {
-      return distance;
-    }
-
-    if (next1.length !== 0) {
-      [x1, y1] = next1[0];
-      visited.add(`${x1},${y1}`);
-    }
-
-    if (next2.length !== 0) {
-      [x2, y2] = next2[0];
-      visited.add(`${x2},${y2}`);
-    }
   }
 
-  return distance;
+  return (distance + 1) / 2;
 }
 
 // part 1
