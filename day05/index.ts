@@ -1,213 +1,184 @@
+import { CompletionTriggerKind } from 'typescript';
 import input from './input';
 
-export type Mapping = {
+type Range = {
+  source: number;
+  length: number;
+};
+
+type Mapping = {
   source: number;
   destination: number;
   length: number;
 };
 
-export type Range = {
-  source: number;
-  length: number;
-};
-
 type Data = {
   seeds: number[];
-  mappings: Mapping[][];
+  maps: Mapping[][];
 };
 
 type RangedData = {
   seedRanges: Range[];
-  mappings: Mapping[][];
+  maps: Mapping[][];
 };
 
 function getData(input: string): Data {
-  let seeds: number[] = [];
-  const mappings: Mapping[][] = [];
+  const [seedsData, ...mapsData] = input.split('\n\n');
+  const seeds = seedsData.split(': ')[1].split(' ').map(Number);
+  const maps: Mapping[][] = [];
 
-  let mapIndex = -1;
-  const lines = input.split('\n').filter(l => l !== '');
+  for (const mapData of mapsData) {
+    const lines = mapData.split('\n').slice(1);
+    const currentMappings: Mapping[] = [];
 
-  for (const line of lines) {
-    if (line.startsWith('seeds')) {
-      const [, seedValues] = line.split(': ');
-      seeds = seedValues.split(' ').map(Number);
-    } else if (line.endsWith('map:')) {
-      mapIndex++;
-      mappings.push([]);
-    } else {
+    for (const line of lines) {
       const [destination, source, length] = line.split(' ').map(Number);
-      const mapping: Mapping = { source, destination, length };
-      mappings[mapIndex].push(mapping);
+      currentMappings.push({ source, destination, length });
     }
+    maps.push(currentMappings);
   }
 
-  return { seeds, mappings };
+  return { seeds, maps };
 }
 
-function findLocationValue(seed: number, mappings: Mapping[][]): number {
-  let currentValue = seed;
-  for (let i = 0; i < mappings.length; i++) {
-    const currentMappings = mappings[i];
-    for (const { source, destination, length } of currentMappings) {
-      if (currentValue >= source && currentValue <= source + length - 1) {
-        currentValue += destination - source;
+function findSeedLocation(seed: number, maps: Mapping[][]): number {
+  let value = seed;
+  for (const map of maps) {
+    for (const { source, destination, length } of map) {
+      if (value >= source && value <= source + length - 1) {
+        value += destination - source;
         break;
       }
     }
   }
-  return currentValue;
+
+  return value;
 }
 
-function findMinimumLocation(seeds: number[], mappings: Mapping[][]): number {
-  let minimum = Infinity;
-  for (const seed of seeds) {
-    const seedLocation = findLocationValue(seed, mappings);
-    minimum = Math.min(minimum, seedLocation);
-  }
-  return minimum;
+function findMinimumLocation(seeds: number[], maps: Mapping[][]): number {
+  const locations = seeds.map(seed => findSeedLocation(seed, maps));
+  return Math.min(...locations);
 }
 
 // part 1
 
-// const { seeds, mappings } = getData(input);
-// const minimumLocation = findMinimumLocation(seeds, mappings);
-// console.log(minimumLocation);
+const { seeds, maps } = getData(input);
+const minimumLocation = findMinimumLocation(seeds, maps);
+console.log(minimumLocation);
 
 function getRangedData(input: string): RangedData {
+  const [seedsData, ...mapsData] = input.split('\n\n');
+  const seeds = seedsData.split(': ')[1].split(' ').map(Number);
   const seedRanges: Range[] = [];
-  const mappings: Mapping[][] = [];
-
-  let mapIndex = -1;
-  const lines = input.split('\n').filter(l => l !== '');
-
-  for (const line of lines) {
-    if (line.startsWith('seeds')) {
-      const [, seedValues] = line.split(': ');
-      const seeds = seedValues.split(' ').map(Number);
-      for (let s = 0; s < seeds.length; s += 2) {
-        const [source, length] = seeds.slice(s, s + 2);
-        const seedRange: Range = { source, length };
-        seedRanges.push(seedRange);
-      }
-    } else if (line.endsWith('map:')) {
-      mapIndex++;
-      mappings.push([]);
-    } else {
-      const [destination, source, length] = line.split(' ').map(Number);
-      const mapping: Mapping = { source, destination, length };
-      mappings[mapIndex].push(mapping);
-    }
+  for (let i = 0; i < seeds.length; i += 2) {
+    seedRanges.push({ source: seeds[i], length: seeds[i + 1] });
   }
 
-  return { seedRanges, mappings };
+  const maps: Mapping[][] = [];
+  for (const mapData of mapsData) {
+    const lines = mapData.split('\n').slice(1);
+    const currentMappings: Mapping[] = [];
+
+    for (const line of lines) {
+      const [destination, source, length] = line.split(' ').map(Number);
+      currentMappings.push({ source, destination, length });
+    }
+    maps.push(currentMappings);
+  }
+
+  return { seedRanges, maps };
 }
 
-export function mapRange(range: Range, mapping: Mapping): Range[] {
+export function mapRange(
+  range: Range,
+  mapping: Mapping
+): { mapped: Range[]; same: Range[] } {
   const { source: x, length } = range;
   const y = x + length - 1;
 
   const { source: sx, destination: dx, length: len } = mapping;
   const sy = sx + len - 1;
 
-  if (x > sy || y < sx) {
-    // |---|
-    //       |------|
-    //      sx     sy
-    return [];
-  }
-
   if (x >= sx && y <= sy) {
     //     |----|
     // |-------------|
     // sx           sy
-    return [{ source: x + (dx - sx), length }];
+    return {
+      mapped: [{ source: x + (dx - sx), length }],
+      same: [],
+    };
   }
 
   if (x < sx && y > sy) {
     // |-----------|
     //      |---|
     //    sx    sy
-    return [
-      { source: x, length: sx - x },
-      { source: dx, length: len },
-      { source: sy + 1, length: y - sy },
-    ];
+    return {
+      mapped: [{ source: dx, length: len }],
+      same: [
+        { source: x, length: sx - x },
+        { source: sy + 1, length: y - sy },
+      ],
+    };
   }
 
-  if (x >= sx && x <= sy) {
+  if (x >= sx && x <= sy && sy < y) {
     //      |---------|
     // |----------|
     // sx         sy
-    return [
-      { source: x + (dx - sx), length: sy - x + 1 },
-      { source: sy + 1, length: y - sy },
-    ];
+    return {
+      mapped: [{ source: x + (dx - sx), length: sy - x + 1 }],
+      same: [{ source: sy + 1, length: y - sy }],
+    };
   }
 
-  if (y >= sx && y <= sy) {
+  if (y >= sx && y <= sy && x < sx) {
     // |----------|
     //        |--------|
     //        sx      sy
-    return [
-      { source: x, length: sx - x },
-      { source: dx, length: y - sx + 1 },
-    ];
+    return {
+      mapped: [{ source: dx, length: y - sx + 1 }],
+      same: [{ source: x, length: sx - x }],
+    };
   }
 
-  return [];
+  return {
+    mapped: [],
+    same: [],
+  };
 }
 
-function findRangeMinLocationValue(
-  seedRange: Range,
-  mappings: Mapping[][]
-): number {
-  let currentRanges: Range[] = [{ ...seedRange }];
-  let nextRanges: Range[] = [];
+function findMinimumLocationRange(seeds: Range[], maps: Mapping[][]) {
+  for (const map of maps) {
+    const newSeeds: Range[] = [];
 
-  for (let i = 0; i < 7; i++) {
-    const currentMappings = mappings[i];
+    while (seeds.length > 0) {
+      const range = seeds.pop()!;
+      let matchFound = false;
 
-    for (let j = 0; j < currentRanges.length; j++) {
-      const currentRange = currentRanges[j];
-      const mappedRanges: Range[] = [];
+      for (const mapping of map) {
+        const { mapped, same } = mapRange(range, mapping);
 
-      for (const mapping of currentMappings) {
-        const newRanges = mapRange(currentRange, mapping);
-        mappedRanges.push(...newRanges);
+        if (mapped.length) {
+          newSeeds.push(...mapped);
+          seeds.push(...same);
+          matchFound = true;
+          break;
+        }
       }
 
-      if (!mappedRanges.length) {
-        mappedRanges.push(currentRange);
+      if (!matchFound) {
+        newSeeds.push(range);
       }
-      nextRanges.push(...mappedRanges);
     }
-
-    currentRanges = [...nextRanges];
-    nextRanges = [];
+    seeds = newSeeds;
   }
 
-  const currentSources = currentRanges.map(range => range.source);
-
-  return Math.min(...currentSources);
-}
-
-function findRangesMinimumLocation(
-  seedRanges: Range[],
-  mappings: Mapping[][]
-): number {
-  let minimum = Infinity;
-
-  for (const seedRange of seedRanges) {
-    const seedRangeMinLocation = findRangeMinLocationValue(seedRange, mappings);
-    minimum = Math.min(minimum, seedRangeMinLocation);
-  }
-
-  return minimum;
+  return Math.min(...seeds.map(seed => seed.source));
 }
 
 // part 2
 
-const { seedRanges, mappings: mappings2 } = getRangedData(input);
-const minimumLocation2 = findRangesMinimumLocation(seedRanges, mappings2);
+const { seedRanges } = getRangedData(input);
+const minimumLocation2 = findMinimumLocationRange(seedRanges, maps);
 console.log(minimumLocation2);
