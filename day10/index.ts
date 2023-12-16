@@ -22,14 +22,14 @@ type Data = {
 function parseInput(input: string): Data {
   const lines = input.split('\n');
   const map = lines.map(line => line.split(''));
-
   let startingPosition: Position = [-1, -1];
 
   for (let i = 0; i < map.length; i++) {
-    const position = map[i].findIndex(x => x === START);
-    if (position !== -1) {
-      startingPosition = [i, position];
-      break;
+    for (let j = 0; j < map[i].length; j++) {
+      if (map[i][j] === START) {
+        startingPosition = [i, j];
+        break;
+      }
     }
   }
 
@@ -48,12 +48,15 @@ function getAdjacentPositions(
   const dx = [-1, 0, 1, 0];
   const dy = [0, 1, 0, -1];
   const adjacentPositions: Position[] = [];
+
   for (let i = 0; i < 4; i++) {
     if (x + dx[i] >= 0 && x + dx[i] < n && y + dy[i] >= 0 && y + dy[i] < m) {
       const adjacentPosition: Position = [x + dx[i], y + dy[i]];
       adjacentPositions.push(adjacentPosition);
     }
+    1;
   }
+
   return adjacentPositions;
 }
 
@@ -143,26 +146,24 @@ function getNextPosition(
   return correctPipesPositions;
 }
 
-function calculate(
-  startPosition: Position,
-  startAdjacent: Position[],
-  map: string[][]
-) {
+function calculateLongestDistance(startPosition: Position, map: string[][]) {
   const [a, b] = startPosition;
-  const adjacentPipesPositions = startAdjacent.filter(
-    ([x, y]) => map[x][y] !== GROUND && map[x][y] !== START
+  const adjacent = getAdjacentPositions(
+    startPosition,
+    map.length,
+    map[0].length
   );
-
-  const correctPipesPositions = adjacentPipesPositions.filter(position =>
+  const pipes = adjacent.filter(([x, y]) => map[x][y] !== GROUND);
+  const correctPipes = pipes.filter(position =>
     checkAdjacentPipeCorrect(startPosition, position, map)
   );
 
-  if (correctPipesPositions.length !== 2) {
+  if (correctPipes.length !== 2) {
     throw new Error('There should be only 2 pipes from S');
   }
 
   let distance = 1;
-  let [first, second] = correctPipesPositions;
+  let [first, second] = correctPipes;
 
   let [x1, y1] = first;
   let [x2, y2] = second;
@@ -198,15 +199,7 @@ function calculate(
   return distance;
 }
 
-function move(startingPosition: Position, map: string[][]) {
-  const n = map.length;
-  const m = map[0].length;
-  const startAdjacent = getAdjacentPositions(startingPosition, n, m);
-  const distance = calculate(startingPosition, startAdjacent, map);
-  return distance;
-}
-
 // part 1
 const { startingPosition, map } = parseInput(input);
-const result = move(startingPosition, map);
+const result = calculateLongestDistance(startingPosition, map);
 console.log(result);
